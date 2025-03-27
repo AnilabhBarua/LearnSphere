@@ -10,7 +10,7 @@ lerna-debug.log*
 node_modules
 future
 dist
-.env
+backend/.env
 dist-ssr
 *.local
 
