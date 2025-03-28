@@ -18,5 +18,5 @@ export interface LoginCredentials {
 
 export interface RegisterCredentials extends LoginCredentials {
   name: string;
-  role: 'teacher' | 'student';
+  role: 'admin' | 'teacher' | 'student';
 }
