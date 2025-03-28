@@ -7,7 +7,10 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Courses from './pages/Courses';
 import CourseDetails from './pages/CourseDetails';
+import Quiz from './pages/Quiz';
+import Progress from './pages/Progress';
 import AdminPanel from './pages/AdminPanel';
+import Forum from './pages/Forum';
 import { useAuth } from './context/AuthContext';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,8 +55,22 @@ function App() {
                 </PrivateRoute>
               }
             />
-            
-            
+            <Route
+              path="/quiz/:id"
+              element={
+                <PrivateRoute>
+                  <Quiz />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/progress"
+              element={
+                <PrivateRoute>
+                  <Progress />
+                </PrivateRoute>
+              }
+            />
             <Route
               path="/admin"
               element={
@@ -62,7 +79,14 @@ function App() {
                 </AdminRoute>
               }
             />
-      
+            <Route
+              path="/forum"
+              element={
+                <PrivateRoute>
+                  <Forum />
+                </PrivateRoute>
+              }
+            />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Layout>
