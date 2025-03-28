@@ -9,7 +9,8 @@ import {
   GraduationCap,
   BarChart2,
   Settings,
-  MessageSquare
+  MessageSquare,
+  HelpCircle
 } from 'lucide-react';
 import { auth } from '../services/api';
 
@@ -62,6 +63,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               <GraduationCap className="h-5 w-5 mr-3" />
               Courses
+            </Link>
+            <Link
+              to="/quiz"
+              className={`flex items-center px-4 py-2 text-sm font-medium ${
+                location.pathname.startsWith('/quiz')
+                  ? 'text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
+              }`}
+            >
+              <HelpCircle className="h-5 w-5 mr-3" />
+              Quizzes
             </Link>
             <Link
               to="/progress"
