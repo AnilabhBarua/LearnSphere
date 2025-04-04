@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { courses } from '../services/api';
-import { Course, CourseContent } from '../types/course';
+import { Course, CourseContent, Quiz as QuizType } from '../types/course';
 import { useAuth } from '../context/AuthContext';
 import { Play, FileText, HelpCircle, MessageSquare, Upload, Download, Trash2 } from 'lucide-react';
 
@@ -10,7 +10,8 @@ const CourseDetails = () => {
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [contents, setContents] = useState<CourseContent[]>([]);
-  const [activeTab, setActiveTab] = useState<'content' | 'discussion'>('content');
+  const [quizzes, setQuizzes] = useState<QuizType[]>([]);
+  const [activeTab, setActiveTab] = useState<'content' | 'quizzes' | 'discussion'>('content');
   const [loading, setLoading] = useState(true);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -20,10 +21,15 @@ const CourseDetails = () => {
   useEffect(() => {
     const fetchCourseDetails = async () => {
       try {
-        const courseData = await courses.getById(Number(id));
+        if (!id) return;
+        const [courseData, contentData, quizzesData] = await Promise.all([
+          courses.getById(Number(id)),
+          courses.getCourseContent(Number(id)),
+          courses.getQuizzes(Number(id))
+        ]);
         setCourse(courseData);
-        const contentData = await courses.getCourseContent(Number(id));
         setContents(contentData);
+        setQuizzes(quizzesData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching course details:', error);
@@ -31,9 +37,7 @@ const CourseDetails = () => {
       }
     };
 
-    if (id) {
-      fetchCourseDetails();
-    }
+    fetchCourseDetails();
   }, [id]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,6 +136,16 @@ const CourseDetails = () => {
               Course Content
             </button>
             <button
+              onClick={() => setActiveTab('quizzes')}
+              className={`px-4 py-2 rounded-md ${
+                activeTab === 'quizzes'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Quizzes
+            </button>
+            <button
               onClick={() => setActiveTab('discussion')}
               className={`px-4 py-2 rounded-md ${
                 activeTab === 'discussion'
@@ -214,6 +228,34 @@ const CourseDetails = () => {
               {contents.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   No content available for this course yet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'quizzes' && (
+            <div className="space-y-4">
+              {quizzes.map((quiz) => (
+                <div key={quiz.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{quiz.title}</h3>
+                      <p className="text-sm text-gray-500">
+                        {quiz.questions.length} questions • {quiz.time_limit} minutes
+                      </p>
+                    </div>
+                    <Link
+                      to={`/courses/${id}/quiz/${quiz.id}`}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                    >
+                      Start Quiz
+                    </Link>
+                  </div>
+                </div>
+              ))}
+              {quizzes.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No quizzes available for this course yet.
                 </div>
               )}
             </div>

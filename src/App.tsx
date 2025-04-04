@@ -8,7 +8,9 @@ import Dashboard from './pages/Dashboard';
 import Courses from './pages/Courses';
 import CourseDetails from './pages/CourseDetails';
 import Quiz from './pages/Quiz';
+import QuizManagement from './pages/QuizManagement';
 import Progress from './pages/Progress';
+import Reports from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
 import Forum from './pages/Forum';
 import { useAuth } from './context/AuthContext';
@@ -16,6 +18,15 @@ import { useAuth } from './context/AuthContext';
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const TeacherRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  return user?.role === 'teacher' || user?.role === 'admin' ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/dashboard" />
+  );
 };
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -56,11 +67,27 @@ function App() {
               }
             />
             <Route
-              path="/quiz/:id"
+              path="/quiz"
               element={
                 <PrivateRoute>
                   <Quiz />
                 </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quiz-management"
+              element={
+                <TeacherRoute>
+                  <QuizManagement />
+                </TeacherRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <TeacherRoute>
+                  <Reports />
+                </TeacherRoute>
               }
             />
             <Route

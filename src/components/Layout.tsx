@@ -10,7 +10,8 @@ import {
   BarChart2,
   Settings,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 import { auth } from '../services/api';
 
@@ -64,17 +65,45 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <GraduationCap className="h-5 w-5 mr-3" />
               Courses
             </Link>
-            <Link
-              to="/quiz"
-              className={`flex items-center px-4 py-2 text-sm font-medium ${
-                location.pathname.startsWith('/quiz')
-                  ? 'text-indigo-600 bg-indigo-50'
-                  : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
-              }`}
-            >
-              <HelpCircle className="h-5 w-5 mr-3" />
-              Quizzes
-            </Link>
+            {user.role === 'student' && (
+              <Link
+                to="/quiz"
+                className={`flex items-center px-4 py-2 text-sm font-medium ${
+                  location.pathname.startsWith('/quiz')
+                    ? 'text-indigo-600 bg-indigo-50'
+                    : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
+                }`}
+              >
+                <HelpCircle className="h-5 w-5 mr-3" />
+                Quizzes
+              </Link>
+            )}
+            {(user.role === 'teacher' || user.role === 'admin') && (
+              <>
+                <Link
+                  to="/quiz-management"
+                  className={`flex items-center px-4 py-2 text-sm font-medium ${
+                    isActive('/quiz-management')
+                      ? 'text-indigo-600 bg-indigo-50'
+                      : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <HelpCircle className="h-5 w-5 mr-3" />
+                  Quiz Management
+                </Link>
+                <Link
+                  to="/reports"
+                  className={`flex items-center px-4 py-2 text-sm font-medium ${
+                    isActive('/reports')
+                      ? 'text-indigo-600 bg-indigo-50'
+                      : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <FileText className="h-5 w-5 mr-3" />
+                  Reports
+                </Link>
+              </>
+            )}
             <Link
               to="/progress"
               className={`flex items-center px-4 py-2 text-sm font-medium ${
