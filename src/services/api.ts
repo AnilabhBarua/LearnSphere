@@ -20,6 +20,30 @@ api.interceptors.request.use((config) => {
 
 export const auth = {
   login: async (credentials: { email: string; password: string }) => {
+    // Mock credentials for testing
+    const mockUsers = {
+      'admin@lms.com': { password: 'admin123', role: 'admin', name: 'Admin User' },
+      'teacher@lms.com': { password: 'teacher123', role: 'teacher', name: 'Teacher User' },
+      'student@lms.com': { password: 'student123', role: 'student', name: 'Student User' },
+    };
+
+    // Check if using mock credentials
+    const mockUser = mockUsers[credentials.email];
+    if (mockUser && mockUser.password === credentials.password) {
+      const mockResponse = {
+        user: {
+          id: Math.floor(Math.random() * 1000),
+          email: credentials.email,
+          name: mockUser.name,
+          role: mockUser.role,
+          created_at: new Date().toISOString(),
+        },
+        token: 'mock-jwt-token',
+      };
+      return mockResponse;
+    }
+
+    // If not using mock credentials, proceed with actual API call
     const { data } = await api.post('/auth/login', credentials);
     return data;
   },
@@ -52,6 +76,27 @@ export const courses = {
   },
   delete: async (id: number) => {
     await api.delete(`/courses/${id}`);
+  },
+  getCourseContent: async (courseId: number) => {
+    const { data } = await api.get(`/courses/${courseId}/content`);
+    return data;
+  },
+  uploadContent: async (formData: FormData, onProgress?: (progressEvent: any) => void) => {
+    const { data } = await api.post('/courses/content', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: onProgress,
+    });
+    return data;
+  },
+  downloadContent: async (contentId: number) => {
+    return await api.get(`/courses/content/${contentId}/download`, {
+      responseType: 'blob',
+    });
+  },
+  deleteContent: async (contentId: number) => {
+    await api.delete(`/courses/content/${contentId}`);
   },
 };
 

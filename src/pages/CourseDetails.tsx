@@ -2,21 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { courses } from '../services/api';
 import { Course, CourseContent } from '../types/course';
-import { Play, FileText, HelpCircle, MessageSquare } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Play, FileText, HelpCircle, MessageSquare, Upload, Download, Trash2 } from 'lucide-react';
 
 const CourseDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [contents, setContents] = useState<CourseContent[]>([]);
   const [activeTab, setActiveTab] = useState<'content' | 'discussion'>('content');
   const [loading, setLoading] = useState(true);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
 
   useEffect(() => {
     const fetchCourseDetails = async () => {
       try {
         const courseData = await courses.getById(Number(id));
         setCourse(courseData);
-        // Fetch course contents would go here
+        const contentData = await courses.getCourseContent(Number(id));
+        setContents(contentData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching course details:', error);
@@ -28,6 +35,59 @@ const CourseDetails = () => {
       fetchCourseDetails();
     }
   }, [id]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !course) return;
+
+    try {
+      setUploadingFile(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('courseId', course.id.toString());
+      formData.append('title', file.name);
+      formData.append('type', 'pdf');
+
+      const response = await courses.uploadContent(formData, (progress) => {
+        setUploadProgress(Math.round((progress.loaded * 100) / progress.total));
+      });
+
+      setContents((prev) => [...prev, response]);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    } finally {
+      setUploadingFile(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleDeleteContent = async (contentId: number) => {
+    if (!window.confirm('Are you sure you want to delete this content?')) return;
+
+    try {
+      await courses.deleteContent(contentId);
+      setContents((prev) => prev.filter((content) => content.id !== contentId));
+    } catch (error) {
+      console.error('Error deleting content:', error);
+    }
+  };
+
+  const handleDownload = async (content: CourseContent) => {
+    try {
+      const response = await courses.downloadContent(content.id);
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = content.title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -83,37 +143,83 @@ const CourseDetails = () => {
             </button>
           </div>
 
-          {activeTab === 'content' ? (
+          {activeTab === 'content' && (
             <div className="space-y-4">
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <div className="flex items-center">
-                  <Play className="h-5 w-5 text-indigo-600 mr-3" />
-                  <div>
-                    <h3 className="font-medium">Introduction to the Course</h3>
-                    <p className="text-sm text-gray-500">15 minutes</p>
+              {isTeacherOrAdmin && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="fileUpload"
+                    className="hidden"
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    disabled={uploadingFile}
+                  />
+                  <label
+                    htmlFor="fileUpload"
+                    className="cursor-pointer flex flex-col items-center justify-center"
+                  >
+                    <Upload className="h-12 w-12 text-gray-400 mb-3" />
+                    <span className="text-sm text-gray-600">
+                      {uploadingFile ? (
+                        <div className="w-full max-w-xs mx-auto">
+                          <div className="bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-600">Uploading... {uploadProgress}%</p>
+                        </div>
+                      ) : (
+                        'Click to upload PDF files'
+                      )}
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {contents.map((content) => (
+                <div key={content.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FileText className="h-5 w-5 text-indigo-600 mr-3" />
+                      <div>
+                        <h3 className="font-medium">{content.title}</h3>
+                        <p className="text-sm text-gray-500">{content.type.toUpperCase()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleDownload(content)}
+                        className="p-2 text-gray-600 hover:text-indigo-600"
+                        title="Download"
+                      >
+                        <Download className="h-5 w-5" />
+                      </button>
+                      {isTeacherOrAdmin && (
+                        <button
+                          onClick={() => handleDeleteContent(content.id)}
+                          className="p-2 text-gray-600 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <div className="flex items-center">
-                  <FileText className="h-5 w-5 text-indigo-600 mr-3" />
-                  <div>
-                    <h3 className="font-medium">Course Materials</h3>
-                    <p className="text-sm text-gray-500">PDF Document</p>
-                  </div>
+              ))}
+
+              {contents.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No content available for this course yet.
                 </div>
-              </div>
-              <div className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                <div className="flex items-center">
-                  <HelpCircle className="h-5 w-5 text-indigo-600 mr-3" />
-                  <div>
-                    <h3 className="font-medium">Module 1 Quiz</h3>
-                    <p className="text-sm text-gray-500">10 questions</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'discussion' && (
             <div className="space-y-6">
               <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
