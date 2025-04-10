@@ -1,43 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { quizzes } from '../services/api';
 import { Quiz as QuizType } from '../types/course';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+
+// Mock quiz data
+const mockQuiz: QuizType = {
+  id: 1,
+  course_id: 1,
+  title: 'JavaScript Fundamentals',
+  time_limit: 30,
+  questions: [
+    {
+      id: 1,
+      quiz_id: 1,
+      question: 'What is closure in JavaScript?',
+      options: [
+        'A way to close browser window',
+        'A function that has access to variables in its outer scope',
+        'A method to end loops',
+        'A way to close database connections'
+      ],
+      correct_answer: 1
+    },
+    {
+      id: 2,
+      quiz_id: 1,
+      question: 'What is the purpose of useState in React?',
+      options: [
+        'To create global state',
+        'To manage component state',
+        'To handle API calls',
+        'To define routes'
+      ],
+      correct_answer: 1
+    },
+    {
+      id: 3,
+      quiz_id: 1,
+      question: 'What does useEffect do?',
+      options: [
+        'Handles side effects in components',
+        'Creates new components',
+        'Manages routing',
+        'Handles form validation'
+      ],
+      correct_answer: 0
+    }
+  ]
+};
 
 const Quiz = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [quiz, setQuiz] = useState<QuizType | null>(null);
+  const [quiz, setQuiz] = useState<QuizType | null>(mockQuiz);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState(false);
   const [result, setResult] = useState<{
     score: number;
     totalQuestions: number;
     correctAnswers: number;
+    incorrectAnswers: number[];
   } | null>(null);
 
   useEffect(() => {
-    const fetchQuiz = async () => {
-      try {
-        if (!id) return;
-        const quizData = await quizzes.getById(Number(id));
-        setQuiz(quizData);
-        setTimeRemaining(quizData.time_limit * 60); // Convert minutes to seconds
-        setSelectedAnswers(new Array(quizData.questions.length).fill(-1));
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching quiz:', error);
-        setError('Failed to load quiz');
-        setLoading(false);
-      }
-    };
-
-    fetchQuiz();
-  }, [id]);
+    if (quiz) {
+      setTimeRemaining(quiz.time_limit * 60);
+      setSelectedAnswers(new Array(quiz.questions.length).fill(-1));
+    }
+  }, [quiz]);
 
   useEffect(() => {
     if (!timeRemaining || timeRemaining <= 0 || quizSubmitted) return;
@@ -63,63 +96,122 @@ const Quiz = () => {
     setSelectedAnswers(newAnswers);
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (!quiz || !id) return;
-      const response = await quizzes.submit(Number(id), selectedAnswers);
-      setResult(response);
-      setQuizSubmitted(true);
-    } catch (error) {
-      console.error('Error submitting quiz:', error);
-      setError('Failed to submit quiz');
-    }
+  const handleSubmit = () => {
+    if (!quiz) return;
+
+    const incorrectAnswers: number[] = [];
+    let correctCount = 0;
+
+    quiz.questions.forEach((question, index) => {
+      if (selectedAnswers[index] === question.correct_answer) {
+        correctCount++;
+      } else {
+        incorrectAnswers.push(index);
+      }
+    });
+
+    const score = (correctCount / quiz.questions.length) * 100;
+
+    setResult({
+      score,
+      totalQuestions: quiz.questions.length,
+      correctAnswers: correctCount,
+      incorrectAnswers
+    });
+
+    setQuizSubmitted(true);
+    setShowResults(true);
   };
 
-  if (loading) {
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!quiz) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold text-gray-900">Quiz not found</h2>
+        </div>
       </div>
     );
   }
 
-  if (error || !quiz) {
-    return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Error</h2>
-        <p className="text-gray-600">{error || 'Quiz not found'}</p>
-      </div>
-    );
-  }
-
-  if (quizSubmitted && result) {
+  if (showResults && result) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Quiz Results</h2>
-          <div className="space-y-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-green-800 mb-4">
-                Your Score: {result.score}%
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Total Questions</p>
-                  <p className="text-lg font-medium text-gray-900">{result.totalQuestions}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Correct Answers</p>
-                  <p className="text-lg font-medium text-gray-900">{result.correctAnswers}</p>
-                </div>
+        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-indigo-600 px-6 py-4">
+            <h2 className="text-2xl font-bold text-white">Quiz Results</h2>
+          </div>
+          <div className="p-6">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-4">
+                <span className="text-3xl font-bold text-indigo-600">
+                  {Math.round(result.score)}%
+                </span>
               </div>
+              <h3 className="text-xl font-semibold text-gray-900">
+                {result.score >= 70 ? 'Congratulations!' : 'Keep practicing!'}
+              </h3>
+              <p className="text-gray-600 mt-2">
+                You got {result.correctAnswers} out of {result.totalQuestions} questions correct
+              </p>
             </div>
-            <button
-              onClick={() => navigate('/courses')}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              Return to Courses
-            </button>
+
+            <div className="space-y-6">
+              {quiz.questions.map((question, index) => (
+                <div
+                  key={question.id}
+                  className={`p-4 rounded-lg ${
+                    result.incorrectAnswers.includes(index)
+                      ? 'bg-red-50 border border-red-200'
+                      : 'bg-green-50 border border-green-200'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    {result.incorrectAnswers.includes(index) ? (
+                      <XCircle className="h-5 w-5 text-red-500 mt-1 mr-2" />
+                    ) : (
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-1 mr-2" />
+                    )}
+                    <div>
+                      <h4 className="font-medium text-gray-900">
+                        Question {index + 1}: {question.question}
+                      </h4>
+                      <div className="mt-2 space-y-2">
+                        {question.options.map((option, optIndex) => (
+                          <div
+                            key={optIndex}
+                            className={`p-2 rounded ${
+                              optIndex === question.correct_answer
+                                ? 'bg-green-100 text-green-800'
+                                : optIndex === selectedAnswers[index]
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100'
+                            }`}
+                          >
+                            {option}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => navigate('/courses')}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Return to Courses
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -128,45 +220,67 @@ const Quiz = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">{quiz.title}</h1>
+          <div className="flex items-center bg-white bg-opacity-20 px-4 py-2 rounded-lg">
+            <Clock className="h-5 w-5 text-white mr-2" />
+            <span className="text-white font-medium">
+              {timeRemaining ? formatTime(timeRemaining) : '00:00'}
+            </span>
+          </div>
+        </div>
+
         <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">{quiz.title}</h1>
-            <div className="flex items-center text-lg font-semibold text-indigo-600">
-              <Clock className="h-5 w-5 mr-2" />
-              {Math.floor(timeRemaining! / 60)}:{(timeRemaining! % 60).toString().padStart(2, '0')}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-sm font-medium text-gray-500">
+                Question {currentQuestion + 1} of {quiz.questions.length}
+              </span>
+              <span className="text-sm font-medium text-indigo-600">
+                {Math.round((selectedAnswers.filter(a => a !== -1).length / quiz.questions.length) * 100)}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                style={{
+                  width: `${(currentQuestion / quiz.questions.length) * 100}%`
+                }}
+              ></div>
             </div>
           </div>
 
           <div className="mb-8">
-            <div className="text-sm text-gray-500 mb-2">
-              Question {currentQuestion + 1} of {quiz.questions.length}
-            </div>
-            <div className="text-lg font-medium text-gray-900 mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
               {quiz.questions[currentQuestion].question}
-            </div>
+            </h2>
             <div className="space-y-3">
               {quiz.questions[currentQuestion].options.map((option, index) => (
-                <div
+                <button
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                  className={`w-full p-4 text-left rounded-lg border-2 transition-colors ${
                     selectedAnswers[currentQuestion] === index
                       ? 'border-indigo-600 bg-indigo-50'
-                      : 'border-gray-200 hover:bg-gray-50'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
+                  <span className="inline-block w-6 h-6 rounded-full border-2 mr-3 align-middle text-center text-sm
+                    ${selectedAnswers[currentQuestion] === index ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300'}">
+                    {String.fromCharCode(65 + index)}
+                  </span>
                   {option}
-                </div>
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <button
               onClick={() => setCurrentQuestion(curr => curr - 1)}
               disabled={currentQuestion === 0}
-              className="px-4 py-2 text-indigo-600 disabled:text-gray-400"
+              className="px-4 py-2 text-indigo-600 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               Previous
             </button>
