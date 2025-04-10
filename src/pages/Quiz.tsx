@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Quiz as QuizType } from '../types/course';
-import { Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, XCircle, PlayCircle, FileText, AlertTriangle } from 'lucide-react';
 
 // Mock quiz data
 const mockQuiz: QuizType = {
@@ -58,6 +58,7 @@ const Quiz = () => {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
   const [result, setResult] = useState<{
     score: number;
     totalQuestions: number;
@@ -67,13 +68,12 @@ const Quiz = () => {
 
   useEffect(() => {
     if (quiz) {
-      setTimeRemaining(quiz.time_limit * 60);
       setSelectedAnswers(new Array(quiz.questions.length).fill(-1));
     }
   }, [quiz]);
 
   useEffect(() => {
-    if (!timeRemaining || timeRemaining <= 0 || quizSubmitted) return;
+    if (!quizStarted || !timeRemaining || timeRemaining <= 0 || quizSubmitted) return;
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -87,7 +87,12 @@ const Quiz = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, quizSubmitted]);
+  }, [timeRemaining, quizSubmitted, quizStarted]);
+
+  const handleStartQuiz = () => {
+    setQuizStarted(true);
+    setTimeRemaining(quiz?.time_limit ? quiz.time_limit * 60 : 0);
+  };
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (quizSubmitted) return;
@@ -135,6 +140,60 @@ const Quiz = () => {
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-gray-900">Quiz not found</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quizStarted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-indigo-600 px-6 py-4">
+            <h1 className="text-2xl font-bold text-white">{quiz.title}</h1>
+          </div>
+          <div className="p-8">
+            <div className="mb-8">
+              <div className="flex items-center mb-6">
+                <FileText className="h-6 w-6 text-indigo-600 mr-3" />
+                <h2 className="text-xl font-semibold text-gray-900">Quiz Information</h2>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                <div className="flex items-center text-gray-700">
+                  <Clock className="h-5 w-5 mr-2 text-gray-500" />
+                  <span>Time Limit: {quiz.time_limit} minutes</span>
+                </div>
+                <div className="flex items-center text-gray-700">
+                  <FileText className="h-5 w-5 mr-2 text-gray-500" />
+                  <span>Total Questions: {quiz.questions.length}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <div className="flex items-center mb-6">
+                <AlertTriangle className="h-6 w-6 text-yellow-500 mr-3" />
+                <h2 className="text-xl font-semibold text-gray-900">Important Instructions</h2>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-6 space-y-3">
+                <p className="text-gray-700">• The timer will start as soon as you begin the quiz</p>
+                <p className="text-gray-700">• You cannot pause the timer once started</p>
+                <p className="text-gray-700">• The quiz will auto-submit when the time is up</p>
+                <p className="text-gray-700">• You can review and change your answers before submitting</p>
+                <p className="text-gray-700">• Make sure you have a stable internet connection</p>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={handleStartQuiz}
+                className="flex items-center px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <PlayCircle className="h-6 w-6 mr-2" />
+                Start Quiz
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
