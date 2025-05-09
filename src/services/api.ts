@@ -18,6 +18,46 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Mock course data
+const mockCourses: Course[] = [
+  {
+    id: 1,
+    title: 'Human-Computer Interaction (HCI)',
+    description: 'Learn about designing effective, efficient, and enjoyable user interfaces. This course covers principles of user-centered design, usability testing, and interaction design patterns.',
+    teacher_id: 1,
+    thumbnail_url: 'https://images.unsplash.com/photo-1551650975-87deedd944c3',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 2,
+    title: 'Artificial Intelligence and Machine Learning',
+    description: 'Explore the fundamentals of AI/ML, including neural networks, deep learning, natural language processing, and computer vision. Learn to implement modern AI algorithms.',
+    teacher_id: 1,
+    thumbnail_url: 'https://images.unsplash.com/photo-1555255707-c07966088b7b',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 3,
+    title: 'Formal Languages and Automata Theory',
+    description: 'Study the mathematical foundations of computer science, including finite automata, regular expressions, context-free grammars, and Turing machines.',
+    teacher_id: 2,
+    thumbnail_url: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 4,
+    title: 'Python Programming',
+    description: 'Master Python programming from basics to advanced concepts. Learn data structures, algorithms, object-oriented programming, and popular frameworks.',
+    teacher_id: 2,
+    thumbnail_url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
+
 export const auth = {
   login: async (credentials: { email: string; password: string }) => {
     // Mock credentials for testing
@@ -59,12 +99,14 @@ export const auth = {
 
 export const courses = {
   getAll: async () => {
-    const { data } = await api.get<Course[]>('/courses');
-    return data;
+    // Return mock courses instead of making API call
+    return mockCourses;
   },
   getById: async (id: number) => {
-    const { data } = await api.get<Course>(`/courses/${id}`);
-    return data;
+    // Return mock course by id
+    const course = mockCourses.find(c => c.id === id);
+    if (!course) throw new Error('Course not found');
+    return course;
   },
   create: async (courseData: Partial<Course>) => {
     const { data } = await api.post<Course>('/courses', courseData);
