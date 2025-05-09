@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { courses } from '../services/api';
 import { Course, CourseContent, Quiz as QuizType } from '../types/course';
 import { useAuth } from '../context/AuthContext';
-import { Play, FileText, HelpCircle, MessageSquare, Upload, Download, Trash2 } from 'lucide-react';
+import { FileText, Upload, Download, Trash2 } from 'lucide-react';
 
 const CourseDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -183,7 +183,7 @@ const CourseDetails = () => {
                               style={{ width: `${uploadProgress}%` }}
                             ></div>
                           </div>
-                          <p className="mt-2 text-sm text-gray-600">Uploading... {uploadProgress}%</p>
+                          <p className="mt-2 text-sm text-gray-600">DATA IS BEING UPLOADED{uploadProgress}%</p>
                         </div>
                       ) : (
                         'Click to upload PDF files'

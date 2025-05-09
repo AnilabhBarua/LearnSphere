@@ -247,7 +247,7 @@ const Quiz = () => {
                             key={optIndex}
                             className={`p-2 rounded ${
                               optIndex === question.correct_answer
-                                ? 'bg-green-100 text-green-800'
+                                ? 'bg-green-100 text-green-500'
                                 : optIndex === selectedAnswers[index]
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-gray-100'

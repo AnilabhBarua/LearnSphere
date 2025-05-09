@@ -1,4 +1,3 @@
-import React from 'react';
 import { Progress as ProgressType } from '../types/course';
 import { BarChart, CheckCircle, Circle } from 'lucide-react';
 
