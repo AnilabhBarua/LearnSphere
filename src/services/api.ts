@@ -58,6 +58,186 @@ const mockCourses: Course[] = [
   }
 ];
 
+// Mock course content data
+const mockCourseContent = {
+  1: [
+    {
+      id: 1,
+      course_id: 1,
+      title: 'Introduction to HCI',
+      type: 'pdf',
+      content_url: 'https://example.com/hci-intro.pdf',
+      order: 1
+    },
+    {
+      id: 2,
+      course_id: 1,
+      title: 'User-Centered Design Principles',
+      type: 'video',
+      content_url: 'https://example.com/ucd-principles.mp4',
+      order: 2
+    },
+    {
+      id: 3,
+      course_id: 1,
+      title: 'Usability Testing Methods',
+      type: 'pdf',
+      content_url: 'https://example.com/usability-testing.pdf',
+      order: 3
+    }
+  ],
+  2: [
+    {
+      id: 4,
+      course_id: 2,
+      title: 'Neural Networks Fundamentals',
+      type: 'pdf',
+      content_url: 'https://example.com/neural-networks.pdf',
+      order: 1
+    },
+    {
+      id: 5,
+      course_id: 2,
+      title: 'Deep Learning Architecture',
+      type: 'video',
+      content_url: 'https://example.com/deep-learning.mp4',
+      order: 2
+    },
+    {
+      id: 6,
+      course_id: 2,
+      title: 'Natural Language Processing',
+      type: 'pdf',
+      content_url: 'https://example.com/nlp.pdf',
+      order: 3
+    }
+  ],
+  3: [
+    {
+      id: 7,
+      course_id: 3,
+      title: 'Finite Automata',
+      type: 'pdf',
+      content_url: 'https://example.com/finite-automata.pdf',
+      order: 1
+    },
+    {
+      id: 8,
+      course_id: 3,
+      title: 'Regular Expressions',
+      type: 'video',
+      content_url: 'https://example.com/regex.mp4',
+      order: 2
+    },
+    {
+      id: 9,
+      course_id: 3,
+      title: 'Context-Free Grammars',
+      type: 'pdf',
+      content_url: 'https://example.com/cfg.pdf',
+      order: 3
+    }
+  ],
+  4: [
+    {
+      id: 10,
+      course_id: 4,
+      title: 'Python Basics',
+      type: 'pdf',
+      content_url: 'https://example.com/python-basics.pdf',
+      order: 1
+    },
+    {
+      id: 11,
+      course_id: 4,
+      title: 'Data Structures in Python',
+      type: 'video',
+      content_url: 'https://example.com/python-ds.mp4',
+      order: 2
+    },
+    {
+      id: 12,
+      course_id: 4,
+      title: 'Object-Oriented Programming',
+      type: 'pdf',
+      content_url: 'https://example.com/python-oop.pdf',
+      order: 3
+    }
+  ]
+};
+
+// Mock quiz data
+const mockQuizzes = {
+  1: [
+    {
+      id: 1,
+      course_id: 1,
+      title: 'HCI Fundamentals Quiz',
+      time_limit: 30,
+      questions: [
+        {
+          id: 1,
+          quiz_id: 1,
+          question: 'What is the primary goal of user-centered design?',
+          options: [
+            'Making aesthetically pleasing interfaces',
+            'Optimizing for developer efficiency',
+            'Meeting user needs and expectations',
+            'Reducing development costs'
+          ],
+          correct_answer: 2
+        },
+        {
+          id: 2,
+          quiz_id: 1,
+          question: 'Which method is commonly used for usability testing?',
+          options: [
+            'Think-aloud protocol',
+            'Database normalization',
+            'Code refactoring',
+            'Network optimization'
+          ],
+          correct_answer: 0
+        }
+      ]
+    }
+  ],
+  2: [
+    {
+      id: 2,
+      course_id: 2,
+      title: 'Neural Networks Quiz',
+      time_limit: 45,
+      questions: [
+        {
+          id: 3,
+          quiz_id: 2,
+          question: 'What is a perceptron?',
+          options: [
+            'A type of computer monitor',
+            'A single artificial neuron',
+            'A database management system',
+            'A programming language'
+          ],
+          correct_answer: 1
+        },
+        {
+          id: 4,
+          quiz_id: 2,
+          question: 'What is backpropagation used for?',
+          options: [
+            'Network security',
+            'Data compression',
+            'Training neural networks',
+            'File transfer'
+          ],
+          correct_answer: 2
+        }
+      ]
+    }
+  ]
+};
+
 export const auth = {
   login: async (credentials: { email: string; password: string }) => {
     // Mock credentials for testing
@@ -99,11 +279,9 @@ export const auth = {
 
 export const courses = {
   getAll: async () => {
-    // Return mock courses instead of making API call
     return mockCourses;
   },
   getById: async (id: number) => {
-    // Return mock course by id
     const course = mockCourses.find(c => c.id === id);
     if (!course) throw new Error('Course not found');
     return course;
@@ -120,8 +298,10 @@ export const courses = {
     await api.delete(`/courses/${id}`);
   },
   getCourseContent: async (courseId: number) => {
-    const { data } = await api.get(`/courses/${courseId}/content`);
-    return data;
+    return mockCourseContent[courseId] || [];
+  },
+  getQuizzes: async (courseId: number) => {
+    return mockQuizzes[courseId] || [];
   },
   uploadContent: async (formData: FormData, onProgress?: (progressEvent: any) => void) => {
     const { data } = await api.post('/courses/content', formData, {
@@ -144,34 +324,48 @@ export const courses = {
 
 export const quizzes = {
   getAll: async (courseId: number) => {
-    const { data } = await api.get<Quiz[]>(`/courses/${courseId}/quizzes`);
-    return data;
+    return mockQuizzes[courseId] || [];
   },
   getById: async (quizId: number) => {
-    const { data } = await api.get<Quiz>(`/quizzes/${quizId}`);
-    return data;
+    for (const courseQuizzes of Object.values(mockQuizzes)) {
+      const quiz = courseQuizzes.find(q => q.id === quizId);
+      if (quiz) return quiz;
+    }
+    throw new Error('Quiz not found');
   },
   submit: async (quizId: number, answers: number[]) => {
-    const { data } = await api.post(`/quizzes/${quizId}/submit`, { answers });
-    return data;
+    const mockSubmission = {
+      score: Math.floor(Math.random() * 40) + 60, // Random score between 60-100
+      totalQuestions: answers.length,
+      correctAnswers: Math.floor(Math.random() * answers.length) + 1,
+    };
+    return mockSubmission;
   },
 };
 
 export const progress = {
   getStudentProgress: async () => {
-    const { data } = await api.get<Progress[]>('/progress');
-    return data;
+    const mockProgress = mockCourses.map(course => ({
+      course_id: course.id,
+      completed_content: [],
+      quiz_scores: {},
+      overall_progress: Math.floor(Math.random() * 100),
+    }));
+    return mockProgress;
   },
   getCourseProgress: async (courseId: number) => {
-    const { data } = await api.get<Progress>(`/progress/${courseId}`);
-    return data;
+    return {
+      course_id: courseId,
+      completed_content: [],
+      quiz_scores: {},
+      overall_progress: Math.floor(Math.random() * 100),
+    };
   },
 };
 
 export const forum = {
   getPosts: async (courseId?: number) => {
-    const url = courseId ? `/forum?courseId=${courseId}` : '/forum';
-    const { data } = await api.get<ForumPost[]>(url);
+    const { data } = await api.get<ForumPost[]>(courseId ? `/forum?courseId=${courseId}` : '/forum');
     return data;
   },
   createPost: async (postData: Partial<ForumPost>) => {
