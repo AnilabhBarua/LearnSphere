@@ -22,6 +22,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get course by ID with content
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
+    // Get course details
     const [courses] = await pool.query(`
       SELECT c.*, u.name as teacher_name 
       FROM courses c 
@@ -37,21 +38,15 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     // Get course content
     const [content] = await pool.query(`
-      SELECT * FROM course_content 
+      SELECT id, title, content_type, content, created_at
+      FROM course_content 
       WHERE course_id = ? 
-      ORDER BY order_number
-    `, [req.params.id]);
-
-    // Get quizzes
-    const [quizzes] = await pool.query(`
-      SELECT * FROM quizzes 
-      WHERE course_id = ?
+      ORDER BY id
     `, [req.params.id]);
 
     res.json({
       ...course,
-      content,
-      quizzes
+      content
     });
   } catch (error) {
     console.error('Error fetching course:', error);
@@ -62,33 +57,76 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new course (teachers and admins only)
 router.post('/', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
   try {
-    const { title, description, thumbnail_url } = req.body;
+    const { title, description } = req.body;
     const [result] = await pool.query(
-      'INSERT INTO courses (title, description, thumbnail_url, teacher_id) VALUES (?, ?, ?, ?)',
-      [title, description, thumbnail_url, req.user.id]
+      'INSERT INTO courses (title, description, teacher_id) VALUES (?, ?, ?)',
+      [title, description, req.user.id]
     );
-    res.status(201).json({
-      id: result.insertId,
-      title,
-      description,
-      thumbnail_url,
-      teacher_id: req.user.id
-    });
+
+    const [newCourse] = await pool.query(
+      'SELECT c.*, u.name as teacher_name FROM courses c LEFT JOIN users u ON c.teacher_id = u.id WHERE c.id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json(newCourse[0]);
   } catch (error) {
     console.error('Error creating course:', error);
     res.status(500).json({ message: 'Error creating course' });
   }
 });
 
+// Add course content
+router.post('/:id/content', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
+  try {
+    const { title, content, content_type } = req.body;
+    const courseId = req.params.id;
+
+    // Verify course exists and user has access
+    const [courses] = await pool.query(
+      'SELECT * FROM courses WHERE id = ? AND (teacher_id = ? OR ? = "admin")',
+      [courseId, req.user.id, req.user.role]
+    );
+
+    if (courses.length === 0) {
+      return res.status(404).json({ message: 'Course not found or access denied' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO course_content (course_id, title, content, content_type) VALUES (?, ?, ?, ?)',
+      [courseId, title, content, content_type]
+    );
+
+    const [newContent] = await pool.query(
+      'SELECT * FROM course_content WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json(newContent[0]);
+  } catch (error) {
+    console.error('Error adding course content:', error);
+    res.status(500).json({ message: 'Error adding course content' });
+  }
+});
+
 // Update course
 router.put('/:id', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
   try {
-    const { title, description, thumbnail_url } = req.body;
-    await pool.query(
-      'UPDATE courses SET title = ?, description = ?, thumbnail_url = ? WHERE id = ? AND (teacher_id = ? OR ? = "admin")',
-      [title, description, thumbnail_url, req.params.id, req.user.id, req.user.role]
+    const { title, description } = req.body;
+    const [result] = await pool.query(
+      'UPDATE courses SET title = ?, description = ? WHERE id = ? AND (teacher_id = ? OR ? = "admin")',
+      [title, description, req.params.id, req.user.id, req.user.role]
     );
-    res.json({ message: 'Course updated successfully' });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Course not found or access denied' });
+    }
+
+    const [updatedCourse] = await pool.query(
+      'SELECT c.*, u.name as teacher_name FROM courses c LEFT JOIN users u ON c.teacher_id = u.id WHERE c.id = ?',
+      [req.params.id]
+    );
+
+    res.json(updatedCourse[0]);
   } catch (error) {
     console.error('Error updating course:', error);
     res.status(500).json({ message: 'Error updating course' });
@@ -98,30 +136,89 @@ router.put('/:id', authenticateToken, authorizeRole(['teacher', 'admin']), async
 // Delete course
 router.delete('/:id', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
   try {
-    await pool.query(
-      'DELETE FROM courses WHERE id = ? AND (teacher_id = ? OR ? = "admin")',
-      [req.params.id, req.user.id, req.user.role]
-    );
-    res.json({ message: 'Course deleted successfully' });
+    // Start a transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Delete course content first
+      await connection.query(
+        'DELETE FROM course_content WHERE course_id = ?',
+        [req.params.id]
+      );
+
+      // Delete the course
+      const [result] = await connection.query(
+        'DELETE FROM courses WHERE id = ? AND (teacher_id = ? OR ? = "admin")',
+        [req.params.id, req.user.id, req.user.role]
+      );
+
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(404).json({ message: 'Course not found or access denied' });
+      }
+
+      await connection.commit();
+      connection.release();
+      res.json({ message: 'Course deleted successfully' });
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
   } catch (error) {
     console.error('Error deleting course:', error);
     res.status(500).json({ message: 'Error deleting course' });
   }
 });
 
-// Get course quizzes
-router.get('/:id/quizzes', authenticateToken, async (req, res) => {
+// Update course content
+router.put('/:courseId/content/:contentId', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
   try {
-    const [quizzes] = await pool.query(`
-      SELECT q.*, 
-        (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) as question_count
-      FROM quizzes q
-      WHERE q.course_id = ?
-    `, [req.params.id]);
-    res.json(quizzes);
+    const { title, content, content_type } = req.body;
+    const [result] = await pool.query(
+      `UPDATE course_content cc
+       JOIN courses c ON cc.course_id = c.id
+       SET cc.title = ?, cc.content = ?, cc.content_type = ?
+       WHERE cc.id = ? AND cc.course_id = ? AND (c.teacher_id = ? OR ? = "admin")`,
+      [title, content, content_type, req.params.contentId, req.params.courseId, req.user.id, req.user.role]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Content not found or access denied' });
+    }
+
+    const [updatedContent] = await pool.query(
+      'SELECT * FROM course_content WHERE id = ?',
+      [req.params.contentId]
+    );
+
+    res.json(updatedContent[0]);
   } catch (error) {
-    console.error('Error fetching quizzes:', error);
-    res.status(500).json({ message: 'Error fetching quizzes' });
+    console.error('Error updating course content:', error);
+    res.status(500).json({ message: 'Error updating course content' });
+  }
+});
+
+// Delete course content
+router.delete('/:courseId/content/:contentId', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      `DELETE cc FROM course_content cc
+       JOIN courses c ON cc.course_id = c.id
+       WHERE cc.id = ? AND cc.course_id = ? AND (c.teacher_id = ? OR ? = "admin")`,
+      [req.params.contentId, req.params.courseId, req.user.id, req.user.role]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Content not found or access denied' });
+    }
+
+    res.json({ message: 'Course content deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting course content:', error);
+    res.status(500).json({ message: 'Error deleting course content' });
   }
 });
 
