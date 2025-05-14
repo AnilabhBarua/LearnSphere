@@ -11,7 +11,6 @@ const router = express.Router();
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = 'uploads/course-content';
-    // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -53,7 +52,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get course by ID with content
+// Get course by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const [courses] = await pool.query(`
@@ -67,43 +66,24 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Course not found' });
     }
 
-    const course = courses[0];
-
-    const [content] = await pool.query(`
-      SELECT id, title, content_type, content, file_path, created_at
-      FROM course_content 
-      WHERE course_id = ? 
-      ORDER BY id
-    `, [req.params.id]);
-
-    res.json({
-      ...course,
-      content
-    });
+    res.json(courses[0]);
   } catch (error) {
     console.error('Error fetching course:', error);
     res.status(500).json({ message: 'Error fetching course' });
   }
 });
 
-// Create new course
-router.post('/', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
+// Get course content
+router.get('/:id/content', authenticateToken, async (req, res) => {
   try {
-    const { title, description } = req.body;
-    const [result] = await pool.query(
-      'INSERT INTO courses (title, description, teacher_id) VALUES (?, ?, ?)',
-      [title, description, req.user.id]
+    const [content] = await pool.query(
+      'SELECT * FROM course_content WHERE course_id = ? ORDER BY created_at DESC',
+      [req.params.id]
     );
-
-    const [newCourse] = await pool.query(
-      'SELECT c.*, u.name as teacher_name FROM courses c LEFT JOIN users u ON c.teacher_id = u.id WHERE c.id = ?',
-      [result.insertId]
-    );
-
-    res.status(201).json(newCourse[0]);
+    res.json(content);
   } catch (error) {
-    console.error('Error creating course:', error);
-    res.status(500).json({ message: 'Error creating course' });
+    console.error('Error fetching course content:', error);
+    res.status(500).json({ message: 'Error fetching course content' });
   }
 });
 
@@ -121,13 +101,13 @@ router.post('/:id/content', authenticateToken, authorizeRole(['teacher', 'admin'
     );
 
     if (courses.length === 0) {
-      if (filePath) fs.unlinkSync(filePath); // Delete uploaded file if course check fails
+      if (filePath) fs.unlinkSync(filePath);
       return res.status(404).json({ message: 'Course not found or access denied' });
     }
 
     const [result] = await pool.query(
-      'INSERT INTO course_content (course_id, title, content_type, file_path) VALUES (?, ?, ?, ?)',
-      [courseId, title, content_type, filePath]
+      'INSERT INTO course_content (course_id, title, content, content_type, file_path) VALUES (?, ?, ?, ?, ?)',
+      [courseId, title, '', content_type, filePath]
     );
 
     const [newContent] = await pool.query(
@@ -138,7 +118,7 @@ router.post('/:id/content', authenticateToken, authorizeRole(['teacher', 'admin'
     res.status(201).json(newContent[0]);
   } catch (error) {
     console.error('Error adding course content:', error);
-    if (req.file) fs.unlinkSync(req.file.path); // Delete uploaded file if query fails
+    if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: 'Error adding course content' });
   }
 });
@@ -147,7 +127,7 @@ router.post('/:id/content', authenticateToken, authorizeRole(['teacher', 'admin'
 router.get('/:courseId/content/:contentId/download', authenticateToken, async (req, res) => {
   try {
     const [content] = await pool.query(
-      'SELECT cc.*, c.teacher_id FROM course_content cc JOIN courses c ON cc.course_id = c.id WHERE cc.id = ? AND cc.course_id = ?',
+      'SELECT * FROM course_content WHERE id = ? AND course_id = ?',
       [req.params.contentId, req.params.courseId]
     );
 
@@ -167,63 +147,17 @@ router.get('/:courseId/content/:contentId/download', authenticateToken, async (r
   }
 });
 
-// Update course content
-router.put('/:courseId/content/:contentId', authenticateToken, authorizeRole(['teacher', 'admin']), upload.single('file'), async (req, res) => {
-  try {
-    const { title, content_type } = req.body;
-    const filePath = req.file ? req.file.path : null;
-
-    // Get existing content to check file path
-    const [existingContent] = await pool.query(
-      'SELECT file_path FROM course_content WHERE id = ?',
-      [req.params.contentId]
-    );
-
-    const [result] = await pool.query(
-      `UPDATE course_content cc
-       JOIN courses c ON cc.course_id = c.id
-       SET cc.title = ?, cc.content_type = ?, cc.file_path = COALESCE(?, cc.file_path)
-       WHERE cc.id = ? AND cc.course_id = ? AND (c.teacher_id = ? OR ? = "admin")`,
-      [title, content_type, filePath, req.params.contentId, req.params.courseId, req.user.id, req.user.role]
-    );
-
-    if (result.affectedRows === 0) {
-      if (filePath) fs.unlinkSync(filePath);
-      return res.status(404).json({ message: 'Content not found or access denied' });
-    }
-
-    // Delete old file if new file was uploaded
-    if (filePath && existingContent[0].file_path) {
-      fs.unlinkSync(existingContent[0].file_path);
-    }
-
-    const [updatedContent] = await pool.query(
-      'SELECT * FROM course_content WHERE id = ?',
-      [req.params.contentId]
-    );
-
-    res.json(updatedContent[0]);
-  } catch (error) {
-    console.error('Error updating course content:', error);
-    if (req.file) fs.unlinkSync(req.file.path);
-    res.status(500).json({ message: 'Error updating course content' });
-  }
-});
-
 // Delete course content
 router.delete('/:courseId/content/:contentId', authenticateToken, authorizeRole(['teacher', 'admin']), async (req, res) => {
   try {
-    // Get file path before deleting
     const [content] = await pool.query(
-      'SELECT file_path FROM course_content WHERE id = ?',
-      [req.params.contentId]
+      'SELECT file_path FROM course_content WHERE id = ? AND course_id = ?',
+      [req.params.contentId, req.params.courseId]
     );
 
     const [result] = await pool.query(
-      `DELETE cc FROM course_content cc
-       JOIN courses c ON cc.course_id = c.id
-       WHERE cc.id = ? AND cc.course_id = ? AND (c.teacher_id = ? OR ? = "admin")`,
-      [req.params.contentId, req.params.courseId, req.user.id, req.user.role]
+      'DELETE FROM course_content WHERE id = ? AND course_id = ?',
+      [req.params.contentId, req.params.courseId]
     );
 
     if (result.affectedRows === 0) {

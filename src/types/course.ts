@@ -2,10 +2,8 @@ export interface Course {
   id: number;
   title: string;
   description: string;
-  teacher_id: number;
-  thumbnail_url?: string;
+  teacher_id: number | null;
   created_at: string;
-  updated_at: string;
 }
 
 export interface CourseContent {

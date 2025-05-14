@@ -21,10 +21,8 @@ const CourseDetails = () => {
     const fetchCourseDetails = async () => {
       try {
         if (!id) return;
-        const [courseData, contentData] = await Promise.all([
-          courses.getById(Number(id)),
-          courses.getCourseContent(Number(id))
-        ]);
+        const courseData = await courses.getById(Number(id));
+        const contentData = await courses.getCourseContent(Number(id));
         setCourse(courseData);
         setContents(contentData);
       } catch (error) {
@@ -40,7 +38,7 @@ const CourseDetails = () => {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !id) return;
 
     // Validate file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
@@ -60,16 +58,15 @@ const CourseDetails = () => {
       setError(null);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('courseId', id!);
       formData.append('title', file.name);
-      formData.append('content_type', file.type.split('/')[1]);
+      formData.append('content_type', file.type.split('/')[1] === 'pdf' ? 'document' : 'video');
 
-      const response = await courses.uploadContent(formData, (progressEvent) => {
+      const response = await courses.uploadContent(Number(id), formData, (progressEvent) => {
         const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         setUploadProgress(progress);
       });
 
-      setContents([...contents, response]);
+      setContents([response, ...contents]);
     } catch (error) {
       console.error('Error uploading file:', error);
       setError('Failed to upload file');
@@ -79,14 +76,15 @@ const CourseDetails = () => {
     }
   };
 
-  const handleDownload = async (content: CourseContent) => {
+  const handleDownload = async (contentId: number) => {
+    if (!id) return;
     try {
-      const response = await courses.downloadContent(content.id);
+      const response = await courses.downloadContent(Number(id), contentId);
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = content.title;
+      link.download = contents.find(c => c.id === contentId)?.title || 'download';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -98,10 +96,11 @@ const CourseDetails = () => {
   };
 
   const handleDelete = async (contentId: number) => {
+    if (!id) return;
     if (!window.confirm('Are you sure you want to delete this content?')) return;
 
     try {
-      await courses.deleteContent(contentId);
+      await courses.deleteContent(Number(id), contentId);
       setContents(contents.filter(content => content.id !== contentId));
     } catch (error) {
       console.error('Error deleting content:', error);
@@ -129,12 +128,7 @@ const CourseDetails = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="relative">
-          <img
-            src={course.thumbnail_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3'}
-            alt={course.title}
-            className="w-full h-64 object-cover"
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-indigo-600 p-8">
             <h1 className="text-4xl font-bold text-white">{course.title}</h1>
           </div>
         </div>
@@ -199,7 +193,7 @@ const CourseDetails = () => {
                   <div className="flex items-center space-x-2">
                     {content.file_path && (
                       <button
-                        onClick={() => handleDownload(content)}
+                        onClick={() => handleDownload(content.id)}
                         className="p-2 text-gray-600 hover:text-indigo-600"
                         title="Download"
                       >
