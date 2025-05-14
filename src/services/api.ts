@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Course, Quiz, Progress, ForumPost } from '../types/course';
+import { Course, Quiz, Progress, CourseContent } from '../types/course';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -77,6 +77,19 @@ export const auth = {
   },
 };
 
+// Mock course content data
+const mockCourseContent: CourseContent[] = [
+  {
+    id: 1,
+    course_id: 1,
+    title: 'Introduction to React',
+    content: 'Learn the basics of React',
+    content_type: 'document',
+    file_path: null,
+    created_at: new Date().toISOString()
+  }
+];
+
 export const courses = {
   getAll: async () => {
     const { data } = await api.get<Course[]>('/courses');
@@ -91,11 +104,11 @@ export const courses = {
     return data;
   },
   getCourseContent: async (courseId: number) => {
-    const { data } = await api.get(`/courses/${courseId}/content`);
-    return data;
+    // For development, return mock data
+    return mockCourseContent.filter(content => content.course_id === courseId);
   },
-  uploadContent: async (courseId: number, formData: FormData, onProgress?: (progressEvent: any) => void) => {
-    const { data } = await api.post(`/courses/${courseId}/content`, formData, {
+  uploadContent: async (formData: FormData, onProgress?: (progressEvent: any) => void) => {
+    const { data } = await api.post('/courses/content', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

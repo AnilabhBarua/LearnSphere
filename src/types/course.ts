@@ -12,9 +12,9 @@ export interface CourseContent {
   id: number;
   course_id: number;
   title: string;
-  type: string;
-  content?: string;
-  file_path?: string;
+  content: string;
+  content_type: 'video' | 'document' | 'quiz' | 'assignment';
+  file_path: string | null;
   created_at: string;
 }
 
