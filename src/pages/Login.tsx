@@ -21,6 +21,12 @@ const Login = () => {
     }
   };
 
+  const mockCredentials = [
+    { email: 'admin@lms.com', password: 'admin123', role: 'Admin' },
+    { email: 'teacher@lms.com', password: 'teacher123', role: 'Teacher' },
+    { email: 'student@lms.com', password: 'student123', role: 'Student' }
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -60,6 +66,27 @@ const Login = () => {
             </button>
           </div>
         </form>
+
+        <div className="mt-8">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500">Mock Credentials</span>
+            </div>
+          </div>
+          <div className="mt-6 space-y-4">
+            {mockCredentials.map((cred, index) => (
+              <div key={index} className="bg-gray-100 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-900">{cred.role} Account</h3>
+                <p className="mt-1 text-xs text-gray-600">Email: {cred.email}</p>
+                <p className="text-xs text-gray-600">Password: {cred.password}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
