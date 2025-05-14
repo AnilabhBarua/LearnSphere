@@ -43,5 +43,39 @@ export const courses = {
     return data;
   },
   create: async (courseData: Partial<Course>) => {
-  }
-}
+    const { data } = await api.post<Course>('/courses', courseData);
+    return data;
+  },
+  getCourseContent: async (courseId: number) => {
+    const { data } = await api.get(`/courses/${courseId}/content`);
+    return data;
+  },
+  uploadContent: async (formData: FormData, onProgress?: (progressEvent: any) => void) => {
+    const { data } = await api.post(`/courses/${formData.get('courseId')}/content`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: onProgress,
+    });
+    return data;
+  },
+  downloadContent: async (contentId: number) => {
+    return api.get(`/courses/content/${contentId}/download`, {
+      responseType: 'blob',
+    });
+  },
+  deleteContent: async (contentId: number) => {
+    return api.delete(`/courses/content/${contentId}`);
+  },
+  getQuizzes: async (courseId: number) => {
+    const { data } = await api.get<Quiz[]>(`/courses/${courseId}/quizzes`);
+    return data;
+  },
+};
+
+export const progress = {
+  getStudentProgress: async () => {
+    const { data } = await api.get<Progress[]>('/progress');
+    return data;
+  },
+};

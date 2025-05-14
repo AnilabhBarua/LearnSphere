@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { courses } from '../services/api';
 import { Course, CourseContent, Quiz as QuizType } from '../types/course';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Upload, Download, Trash2 } from 'lucide-react';
+import CourseContentComponent from '../components/CourseContent';
 
 const CourseDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,10 +13,6 @@ const CourseDetails = () => {
   const [quizzes, setQuizzes] = useState<QuizType[]>([]);
   const [activeTab, setActiveTab] = useState<'content' | 'quizzes' | 'discussion'>('content');
   const [loading, setLoading] = useState(true);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
 
   useEffect(() => {
     const fetchCourseDetails = async () => {
@@ -39,59 +35,6 @@ const CourseDetails = () => {
 
     fetchCourseDetails();
   }, [id]);
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !course) return;
-
-    try {
-      setUploadingFile(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('courseId', course.id.toString());
-      formData.append('title', file.name);
-      formData.append('type', 'pdf');
-
-      const response = await courses.uploadContent(formData, (progress) => {
-        setUploadProgress(Math.round((progress.loaded * 100) / progress.total));
-      });
-
-      setContents((prev) => [...prev, response]);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-    } finally {
-      setUploadingFile(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const handleDeleteContent = async (contentId: number) => {
-    if (!window.confirm('Are you sure you want to delete this content?')) return;
-
-    try {
-      await courses.deleteContent(contentId);
-      setContents((prev) => prev.filter((content) => content.id !== contentId));
-    } catch (error) {
-      console.error('Error deleting content:', error);
-    }
-  };
-
-  const handleDownload = async (content: CourseContent) => {
-    try {
-      const response = await courses.downloadContent(content.id);
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = content.title;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -158,79 +101,11 @@ const CourseDetails = () => {
           </div>
 
           {activeTab === 'content' && (
-            <div className="space-y-4">
-              {isTeacherOrAdmin && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    id="fileUpload"
-                    className="hidden"
-                    accept=".pdf"
-                    onChange={handleFileUpload}
-                    disabled={uploadingFile}
-                  />
-                  <label
-                    htmlFor="fileUpload"
-                    className="cursor-pointer flex flex-col items-center justify-center"
-                  >
-                    <Upload className="h-12 w-12 text-gray-400 mb-3" />
-                    <span className="text-sm text-gray-600">
-                      {uploadingFile ? (
-                        <div className="w-full max-w-xs mx-auto">
-                          <div className="bg-gray-200 rounded-full h-2.5">
-                            <div
-                              className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-                              style={{ width: `${uploadProgress}%` }}
-                            ></div>
-                          </div>
-                          <p className="mt-2 text-sm text-gray-600">DATA IS BEING UPLOADED{uploadProgress}%</p>
-                        </div>
-                      ) : (
-                        'Click to upload PDF files'
-                      )}
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              {contents.map((content) => (
-                <div key={content.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <FileText className="h-5 w-5 text-indigo-600 mr-3" />
-                      <div>
-                        <h3 className="font-medium">{content.title}</h3>
-                        <p className="text-sm text-gray-500">{content.type.toUpperCase()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleDownload(content)}
-                        className="p-2 text-gray-600 hover:text-indigo-600"
-                        title="Download"
-                      >
-                        <Download className="h-5 w-5" />
-                      </button>
-                      {isTeacherOrAdmin && (
-                        <button
-                          onClick={() => handleDeleteContent(content.id)}
-                          className="p-2 text-gray-600 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {contents.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No content available for this course yet.
-                </div>
-              )}
-            </div>
+            <CourseContentComponent
+              courseId={Number(id)}
+              contents={contents}
+              onContentUpdate={setContents}
+            />
           )}
 
           {activeTab === 'quizzes' && (
