@@ -35,17 +35,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {user && (
-        <div className="w-64 bg-white shadow-md">
-          <div className="h-16 flex items-center px-4">
+        <div className="w-72 bg-white shadow-xl">
+          <div className="h-16 flex items-center px-6 border-b border-gray-200">
             <Link to="/" className="flex items-center">
               <BookOpen className="h-8 w-8 text-indigo-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">LMS</span>
+              <span className="ml-3 text-xl font-bold text-gray-900">LearnSphere</span>
             </Link>
           </div>
-          <nav className="mt-4">
+          <nav className="mt-6 px-4">
             <Link
               to="/dashboard"
-              className={`flex items-center px-4 py-2 text-sm font-medium ${
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive('/dashboard')
                   ? 'text-indigo-600 bg-indigo-50'
                   : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -56,7 +56,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </Link>
             <Link
               to="/courses"
-              className={`flex items-center px-4 py-2 text-sm font-medium ${
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive('/courses')
                   ? 'text-indigo-600 bg-indigo-50'
                   : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -68,7 +68,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {user.role === 'student' && (
               <Link
                 to="/quiz"
-                className={`flex items-center px-4 py-2 text-sm font-medium ${
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                   location.pathname.startsWith('/quiz')
                     ? 'text-indigo-600 bg-indigo-50'
                     : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -82,7 +82,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <>
                 <Link
                   to="/quiz-management"
-                  className={`flex items-center px-4 py-2 text-sm font-medium ${
+                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive('/quiz-management')
                       ? 'text-indigo-600 bg-indigo-50'
                       : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -93,7 +93,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </Link>
                 <Link
                   to="/reports"
-                  className={`flex items-center px-4 py-2 text-sm font-medium ${
+                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     isActive('/reports')
                       ? 'text-indigo-600 bg-indigo-50'
                       : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -106,7 +106,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             )}
             <Link
               to="/progress"
-              className={`flex items-center px-4 py-2 text-sm font-medium ${
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive('/progress')
                   ? 'text-indigo-600 bg-indigo-50'
                   : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -117,7 +117,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </Link>
             <Link
               to="/forum"
-              className={`flex items-center px-4 py-2 text-sm font-medium ${
+              className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 isActive('/forum')
                   ? 'text-indigo-600 bg-indigo-50'
                   : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -129,7 +129,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {user.role === 'admin' && (
               <Link
                 to="/admin"
-                className={`flex items-center px-4 py-2 text-sm font-medium ${
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                   isActive('/admin')
                     ? 'text-indigo-600 bg-indigo-50'
                     : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
@@ -143,26 +143,28 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </div>
       )}
       <div className="flex-1">
-        <header className="bg-white shadow-sm">
-          <div className="h-16 flex items-center justify-end px-4">
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="h-16 flex items-center justify-end px-6">
             {user && (
-              <div className="flex items-center">
-                <span className="text-gray-700 mr-4">
-                  <User className="inline-block h-5 w-5 mr-1" />
-                  {user.name}
-                </span>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <User className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <span className="ml-2 text-sm font-medium text-gray-700">{user.name}</span>
+                </div>
                 <button
                   onClick={handleLogout}
-                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                 >
-                  <LogOut className="h-4 w-4 mr-1" />
+                  <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </button>
               </div>
             )}
           </div>
         </header>
-        <main className="p-6">{children}</main>
+        <main className="p-8">{children}</main>
       </div>
     </div>
   );
